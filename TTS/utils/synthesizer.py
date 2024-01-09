@@ -265,6 +265,7 @@ class Synthesizer(nn.Module):
         reference_wav=None,
         reference_speaker_name=None,
         split_sentences: bool = True,
+        ipa_symbols: bool = False,
         **kwargs,
     ) -> List[int]:
         """🐸 TTS magic. Run all the models and generate speech.
@@ -279,6 +280,7 @@ class Synthesizer(nn.Module):
             reference_wav ([type], optional): reference waveform for voice conversion. Defaults to None.
             reference_speaker_name ([type], optional): speaker id of reference waveform. Defaults to None.
             split_sentences (bool, optional): split the input text into sentences. Defaults to True.
+            ipa_symbols (bool, optional): Whether to synthesize with IPA symbols directly. Defaults to False.
             **kwargs: additional arguments to pass to the TTS model.
         Returns:
             List[int]: [description]
@@ -406,6 +408,7 @@ class Synthesizer(nn.Module):
                         use_griffin_lim=use_gl,
                         d_vector=speaker_embedding,
                         language_id=language_id,
+                        ipa_symbols=ipa_symbols,
                     )
                 waveform = outputs["wav"]
                 if not use_gl:

@@ -243,6 +243,7 @@ class TTS(nn.Module):
         emotion: str = None,
         speed: float = None,
         split_sentences: bool = True,
+        ipa_symbols: bool = False,
         **kwargs,
     ):
         """Convert text to speech.
@@ -267,6 +268,8 @@ class TTS(nn.Module):
                 Split text into sentences, synthesize them separately and concatenate the file audio.
                 Setting it False uses more VRAM and possibly hit model specific text length or VRAM limits. Only
                 applicable to the 🐸TTS models. Defaults to True.
+            ipa_symbols (bool, optional): 
+                Whether to synthesize with IPA symbols directly. Defaults to False.
             kwargs (dict, optional):
                 Additional arguments for the model.
         """
@@ -283,6 +286,7 @@ class TTS(nn.Module):
             style_text=None,
             reference_speaker_name=None,
             split_sentences=split_sentences,
+            ipa_symbols=ipa_symbols,
             **kwargs,
         )
         return wav

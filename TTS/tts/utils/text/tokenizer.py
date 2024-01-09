@@ -84,7 +84,7 @@ class TTSTokenizer:
             text += self.characters.id_to_char(token_id)
         return text
 
-    def text_to_ids(self, text: str, language: str = None) -> List[int]:  # pylint: disable=unused-argument
+    def text_to_ids(self, text: str, language: str = None, ipa_symbols: bool = False) -> List[int]:  # pylint: disable=unused-argument
         """Converts a string of text to a sequence of token IDs.
 
         Args:
@@ -104,9 +104,9 @@ class TTSTokenizer:
         5. Text to token IDs
         """
         # TODO: text cleaner should pick the right routine based on the language
-        if self.text_cleaner is not None:
+        if self.text_cleaner is not None and not ipa_symbols:
             text = self.text_cleaner(text)
-        if self.use_phonemes:
+        if self.use_phonemes and not not ipa_symbols:
             text = self.phonemizer.phonemize(text, separator="", language=language)
         text = self.encode(text)
         if self.add_blank:
