@@ -195,6 +195,9 @@ def synthesis(
         model.tokenizer.text_to_ids(text, language=language_name, ipa_symbols=ipa_symbols),
         dtype=np.int32,
     )
+    if ipa_symbols:
+        print("Encoded tokens:", text_inputs)
+        print("Decoded tokens:", model.tokenizer.ids_to_text(text_inputs))
     # pass tensors to backend
     if speaker_id is not None:
         speaker_id = id_to_torch(speaker_id, device=device)
