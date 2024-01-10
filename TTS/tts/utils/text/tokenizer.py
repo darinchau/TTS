@@ -190,6 +190,8 @@ class TTSTokenizer:
             ipa_text = ""
             for tag, segment in tagged_text:
                 if tag == "en":
+                    if segment[0] in ".,?!;:": # Remove punctuation
+                        segment = segment[1:].strip()
                     if self.text_cleaner is not None:
                         segment = self.text_cleaner(segment)
                     segment = self.phonemizer.phonemize(segment, separator = "", language=language)
