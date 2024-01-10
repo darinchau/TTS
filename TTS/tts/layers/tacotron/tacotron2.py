@@ -362,7 +362,7 @@ class Decoder(nn.Module):
             memory = self._update_memory(decoder_output)
             t += 1
 
-        print(f" >>> Length of output: {outputs}")
+        print(f" >>> Length of output: {len(outputs)}")
         outputs, stop_tokens, alignments = self._parse_outputs(outputs, stop_tokens, alignments)
 
         return outputs, alignments, stop_tokens
