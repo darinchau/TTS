@@ -182,24 +182,30 @@ class TTSTokenizer:
         if not self.use_phonemes:
             if self.text_cleaner is not None:
                 text = self.text_cleaner(text)
-            text = self.encode(text)
         else:
             tagged_text = extract_tags(text)
+            for tag, segment in tagged_text:
+                print(tag, ": ", segment)
+
+            ipa_text = ""
             for tag, segment in tagged_text:
                 if tag == "en":
                     if self.text_cleaner is not None:
                         segment = self.text_cleaner(segment)
-                    self.phonemizer.phonemize(segment, separator = "", language=language)
-                    text += self.encode(segment)
+                    segment = self.phonemizer.phonemize(segment, separator = "", language=language)
+                    ipa_text += segment
                 elif tag == "ipa":
-                    text += segment
+                    ipa_text += segment
                 elif tag == "speak":
                     ssml = "<speak>" + segment + "</speak>"
-                    text += ssml_to_phonemes(ssml)
+                    ipa_text += ssml_to_phonemes(ssml)
                 elif tag == "letter":
-                    text += letter_to_phonemes(segment)
+                    ipa_text += letter_to_phonemes(segment)
                 else:
                     raise ValueError(f"Unknown tag {tag}")
+                ipa_text += " "
+            text = ipa_text
+        text = self.encode(text)
         if self.add_blank:
             text = self.intersperse_blank_char(text, True)
         if self.use_eos_bos:
