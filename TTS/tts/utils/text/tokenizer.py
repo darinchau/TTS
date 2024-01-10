@@ -7,7 +7,6 @@ from TTS.tts.utils.text.phonemizers import DEF_LANG_TO_PHONEMIZER, get_phonemize
 from TTS.tts.utils.text.phonemizers.multi_phonemizer import MultiPhonemizer
 from TTS.utils.generic_utils import get_import_path, import_class
 from gruut import sentences
-from TTS.api import TTS
 
 def extract_tags(text: str):
     tags = ["ipa", "speak", "letter"] # Add IPA and letters as first class support
