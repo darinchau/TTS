@@ -265,7 +265,7 @@ class Synthesizer(nn.Module):
         reference_wav=None,
         reference_speaker_name=None,
         split_sentences: bool = True,
-        ipa_symbols: bool = False,
+        verbose: bool = True,
         **kwargs,
     ) -> List[int]:
         """🐸 TTS magic. Run all the models and generate speech.
@@ -280,7 +280,6 @@ class Synthesizer(nn.Module):
             reference_wav ([type], optional): reference waveform for voice conversion. Defaults to None.
             reference_speaker_name ([type], optional): speaker id of reference waveform. Defaults to None.
             split_sentences (bool, optional): split the input text into sentences. Defaults to True.
-            ipa_symbols (bool, optional): Whether to synthesize with IPA symbols directly. Defaults to False.
             **kwargs: additional arguments to pass to the TTS model.
         Returns:
             List[int]: [description]
@@ -295,10 +294,11 @@ class Synthesizer(nn.Module):
 
         if text:
             sens = [text]
-            if split_sentences:
+            if split_sentences and verbose:
                 print(" > Text splitted to sentences.")
                 sens = self.split_into_sentences(text)
-            print(sens)
+            if verbose:
+                print(sens)
 
         # handle multi-speaker
         if "voice_dir" in kwargs:
@@ -408,7 +408,7 @@ class Synthesizer(nn.Module):
                         use_griffin_lim=use_gl,
                         d_vector=speaker_embedding,
                         language_id=language_id,
-                        ipa_symbols=ipa_symbols,
+                        verbose = True,
                     )
                 waveform = outputs["wav"]
                 if not use_gl:
@@ -423,7 +423,8 @@ class Synthesizer(nn.Module):
                         self.vocoder_config["audio"]["sample_rate"] / self.tts_model.ap.sample_rate,
                     ]
                     if scale_factor[1] != 1:
-                        print(" > interpolating tts model output.")
+                        if verbose:
+                            print(" > interpolating tts model output.")
                         vocoder_input = interpolate_vocoder_input(scale_factor, vocoder_input)
                     else:
                         vocoder_input = torch.tensor(vocoder_input).unsqueeze(0)  # pylint: disable=not-callable
@@ -487,7 +488,8 @@ class Synthesizer(nn.Module):
                     self.vocoder_config["audio"]["sample_rate"] / self.tts_model.ap.sample_rate,
                 ]
                 if scale_factor[1] != 1:
-                    print(" > interpolating tts model output.")
+                    if verbose:
+                        print(" > interpolating tts model output.")
                     vocoder_input = interpolate_vocoder_input(scale_factor, vocoder_input)
                 else:
                     vocoder_input = torch.tensor(vocoder_input).unsqueeze(0)  # pylint: disable=not-callable
@@ -503,6 +505,7 @@ class Synthesizer(nn.Module):
         # compute stats
         process_time = time.time() - start_time
         audio_time = len(wavs) / self.tts_config.audio["sample_rate"]
-        print(f" > Processing time: {process_time}")
-        print(f" > Real-time factor: {process_time / audio_time}")
+        if verbose:
+            print(f" > Processing time: {process_time}")
+            print(f" > Real-time factor: {process_time / audio_time}")
         return wavs

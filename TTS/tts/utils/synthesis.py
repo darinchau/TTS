@@ -125,7 +125,7 @@ def synthesis(
     do_trim_silence=False,
     d_vector=None,
     language_id=None,
-    ipa_symbols=False,
+    verbose=False,
 ):
     """Synthesize voice for the given text using Griffin-Lim vocoder or just compute output features to be passed to
     the vocoder model.
@@ -192,12 +192,13 @@ def synthesis(
 
     # convert text to sequence of token IDs
     text_inputs = np.asarray(
-        model.tokenizer.text_to_ids(text, language=language_name, ipa_symbols=ipa_symbols),
+        model.tokenizer.text_to_ids(text, language=language_name),
         dtype=np.int32,
     )
-    if ipa_symbols:
-        print("Encoded tokens:", text_inputs)
-        print("Decoded tokens:", model.tokenizer.ids_to_text(text_inputs))
+
+    if verbose:
+        print("Encoded tokens:", model.tokenizer.ids_to_text(text_inputs))
+    
     # pass tensors to backend
     if speaker_id is not None:
         speaker_id = id_to_torch(speaker_id, device=device)
@@ -213,7 +214,7 @@ def synthesis(
         style_mel = numpy_to_torch(style_mel, torch.float, device=device)
         if style_text is not None:
             style_text = np.asarray(
-                model.tokenizer.text_to_ids(style_text, language=language_id, ipa_symbols=ipa_symbols),
+                model.tokenizer.text_to_ids(style_text, language=language_id),
                 dtype=np.int32,
             )
             style_text = numpy_to_torch(style_text, torch.long, device=device)

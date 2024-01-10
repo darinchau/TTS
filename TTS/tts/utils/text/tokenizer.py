@@ -1,11 +1,106 @@
 from typing import Callable, Dict, List, Union
 
+import numpy as np
 from TTS.tts.utils.text import cleaners
 from TTS.tts.utils.text.characters import Graphemes, IPAPhonemes
 from TTS.tts.utils.text.phonemizers import DEF_LANG_TO_PHONEMIZER, get_phonemizer_by_name
 from TTS.tts.utils.text.phonemizers.multi_phonemizer import MultiPhonemizer
 from TTS.utils.generic_utils import get_import_path, import_class
+from gruut import sentences
+from TTS.api import TTS
 
+def extract_tags(text: str):
+    tags = ["ipa", "speak", "letter"] # Add IPA and letters as first class support
+    results = []
+    while text:
+        if not text.strip() or not any(f"<{tag}>" in text for tag in tags):
+            results.append(("en", text))
+            return results
+        
+        next_tag_idx = min(text.find(f"<{tag}>") for tag in tags if f"<{tag}>" in text)
+        skipped = text[:next_tag_idx]
+        tag = text[next_tag_idx + 1:text.find(">", next_tag_idx)]
+        close_tag = f"</{tag}>"
+        
+        if any(f"</{tag}>" in skipped for tag in tags):
+            raise ValueError("Nested tags not supported")
+        
+        text = text[next_tag_idx + len(tag) + 2:]
+
+        if close_tag not in text:
+            text = skipped + " " + text
+            continue
+
+        segment = text[:text.find(close_tag)]
+        if any(f"<{tag}>" in segment for tag in tags):
+            raise ValueError("Nested tags not supported")
+        
+        results.append(("en", skipped))
+        results.append((tag, segment))
+        text = text[text.find(close_tag) + len(close_tag):]
+    return results
+
+def ssml_to_phonemes(ssml):
+    full_sentence = []
+    languages = []
+    for sentence in sentences(ssml, ssml=True, espeak=True):
+        langs = []
+        subsentence = []
+        for word in sentence:
+            joined_phonemes = [''.join(word.phonemes)] if word.phonemes is not None else [""]
+            subsentence.append(joined_phonemes)
+            langs.append(word.lang)
+        full_sentence.append(subsentence)
+        languages.append(langs)
+
+    lang_pairs = []
+    for language, sentence in zip(languages, full_sentence):
+        for l, s in zip(language, sentence):
+            s = ' '.join(s)
+            if not s.strip():
+                continue
+            language_pair = (l, s)
+            lang_pairs.append(language_pair)
+    final_sentence = " ".join([l[1] for l in lang_pairs]) # Ignore the language problem for now
+    # for symbol in "ˈˌː":
+    #     final_sentence = final_sentence.replace(symbol, "")
+    return final_sentence
+
+def letter_to_phonemes(text: str):
+    IPASYMBOLS = {
+        'A': 'eɪ',
+        'B': 'bi:',
+        'C': 'si:',
+        'D': 'di:',
+        'E': 'i:',
+        'F': 'ɛf',
+        'G': 'dʒi:',
+        'H': 'eɪtʃ',
+        'I': 'aɪ',
+        'J': 'dʒeɪ',
+        'K': 'keɪ',
+        'L': 'ɛl',
+        'M': 'ɛm',
+        'N': 'ɛn',
+        'O': 'oʊ',
+        'P': 'pi:',
+        'Q': 'kju:',
+        'R': 'ɑr',
+        'S': 'ɛs',
+        'T': 'ti:',
+        'U': 'ju:',
+        'V': 'vi:',
+        'W': 'dʌblju:',
+        'X': 'ɛks',
+        'Y': 'waɪ',
+        'Z': 'zi:'
+    }
+
+    phonemes = ""
+    for char in text:
+        if char.upper() in IPASYMBOLS:
+            phonemes += IPASYMBOLS[char.upper()] + " "
+    return phonemes
 
 class TTSTokenizer:
     """🐸TTS tokenizer to convert input characters to token IDs and back.
@@ -84,31 +179,28 @@ class TTSTokenizer:
             text += self.characters.id_to_char(token_id)
         return text
 
-    def text_to_ids(self, text: str, language: str = None, ipa_symbols: bool = False) -> List[int]:  # pylint: disable=unused-argument
-        """Converts a string of text to a sequence of token IDs.
-
-        Args:
-            text(str):
-                The text to convert to token IDs.
-
-            language(str):
-                The language code of the text. Defaults to None.
-
-        TODO:
-            - Add support for language-specific processing.
-
-        1. Text normalizatin
-        2. Phonemization (if use_phonemes is True)
-        3. Add blank char between characters
-        4. Add BOS and EOS characters
-        5. Text to token IDs
-        """
-        # TODO: text cleaner should pick the right routine based on the language
-        if self.text_cleaner is not None and not ipa_symbols:
-            text = self.text_cleaner(text)
-        if self.use_phonemes and not ipa_symbols:
-            text = self.phonemizer.phonemize(text, separator="", language=language)
-        text = self.encode(text)
+    def text_to_ids(self, text: str, language: str = None) -> List[int]:
+        if not self.use_phonemes:
+            if self.text_cleaner is not None:
+                text = self.text_cleaner(text)
+            text = self.encode(text)
+        else:
+            tagged_text = extract_tags(text)
+            for tag, segment in tagged_text:
+                if tag == "en":
+                    if self.text_cleaner is not None:
+                        segment = self.text_cleaner(segment)
+                    self.phonemizer.phonemize(segment, separator = "", language=language)
+                    text += self.encode(segment)
+                elif tag == "ipa":
+                    text += segment
+                elif tag == "speak":
+                    ssml = "<speak>" + segment + "</speak>"
+                    text += ssml_to_phonemes(ssml)
+                elif tag == "letter":
+                    text += letter_to_phonemes(segment)
+                else:
+                    raise ValueError(f"Unknown tag {tag}")
         if self.add_blank:
             text = self.intersperse_blank_char(text, True)
         if self.use_eos_bos:
